@@ -19,41 +19,28 @@ class MusicRepository(
     val allPlaylists: Flow<List<Playlist>> = playlistDao.getAllPlaylists()
 
     suspend fun initializePreloadedData() {
-        if (trackDao.getTrackCount() == 0) {
-            val samples = StorageScanner.getPreloadedSampleFlacTracks()
-            trackDao.insertAll(samples)
-
-            // Create default system playlists
-            val bassPlaylistId = playlistDao.insertPlaylist(
-                Playlist(
-                    name = "Bass Boosted High-Res FLAC",
-                    description = "Ultra high-definition tracks tuned for deep sub-bass performance",
-                    coverGradientIndex = 1,
-                    isSystemPlaylist = true
-                )
-            )
-            val chillPlaylistId = playlistDao.insertPlaylist(
-                Playlist(
-                    name = "Late Night Audiophile",
-                    description = "Pure uncompressed FLAC recordings for critical listening",
-                    coverGradientIndex = 2,
-                    isSystemPlaylist = false
-                )
-            )
-
-            // Add sample tracks to playlists
-            playlistDao.addTrackToPlaylist(PlaylistTrackCrossRef(bassPlaylistId, 1, 0))
-            playlistDao.addTrackToPlaylist(PlaylistTrackCrossRef(bassPlaylistId, 2, 1))
-            playlistDao.addTrackToPlaylist(PlaylistTrackCrossRef(chillPlaylistId, 3, 0))
-            playlistDao.addTrackToPlaylist(PlaylistTrackCrossRef(chillPlaylistId, 4, 1))
-            playlistDao.addTrackToPlaylist(PlaylistTrackCrossRef(chillPlaylistId, 5, 2))
+        try {
+            // Delete all dummy synth/preloaded tracks
+            trackDao.deleteDummyTracks()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     suspend fun scanStorageForLocalAudio(): Int {
         val scanned = storageScanner.scanAudioFiles()
         if (scanned.isNotEmpty()) {
-            trackDao.insertAll(scanned)
+            val existingTracks = trackDao.getTrackCount()
+            if (existingTracks == 0) {
+                trackDao.insertAll(scanned)
+            } else {
+                for (track in scanned) {
+                    val existing = trackDao.getTrackByPath(track.audioPath)
+                    if (existing == null) {
+                        trackDao.insertTrack(track)
+                    }
+                }
+            }
         }
         return scanned.size
     }

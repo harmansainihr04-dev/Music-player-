@@ -108,10 +108,8 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
 
-        if (hasAudioPermission) {
-            musicViewModel.scanDeviceAudioFiles()
-        } else {
-            // Automatically request permissions on initial launch
+        if (!hasAudioPermission) {
+            // Request permissions on launch if not granted
             requestStoragePermissions()
         }
     }

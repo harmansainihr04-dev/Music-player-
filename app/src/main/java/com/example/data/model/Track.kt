@@ -3,7 +3,10 @@ package com.example.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "tracks")
+@Entity(
+    tableName = "tracks",
+    indices = [androidx.room.Index(value = ["audioPath"], unique = true)]
+)
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,

@@ -25,6 +25,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id = :id LIMIT 1")
     suspend fun getTrackById(id: Long): Track?
 
+    @Query("SELECT * FROM tracks WHERE audioPath = :path LIMIT 1")
+    suspend fun getTrackByPath(path: String): Track?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTrack(track: Track): Long
 
@@ -39,6 +42,9 @@ interface TrackDao {
 
     @Query("DELETE FROM tracks WHERE id = :trackId")
     suspend fun deleteTrack(trackId: Long)
+
+    @Query("DELETE FROM tracks WHERE audioPath LIKE 'synth_%' OR audioPath LIKE 'synth_audio_demo_%'")
+    suspend fun deleteDummyTracks()
 
     @Query("SELECT COUNT(*) FROM tracks")
     suspend fun getTrackCount(): Int
