@@ -4,14 +4,20 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaMetadata
+import android.media.MediaMetadataRetriever
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import com.example.MainActivity
 import com.example.data.model.Track
 
@@ -33,6 +39,44 @@ class PlaybackNotificationManager(private val context: Context) {
     init {
         createNotificationChannel()
         initMediaSession()
+    }
+
+    private fun loadTrackThumbnail(track: Track): Bitmap? {
+        try {
+            // 1. Try MediaStore album art on Android 10+ (Q+)
+            if (track.albumId > 0) {
+                val albumUri = ContentUris.withAppendedId(
+                    Uri.parse("content://media/external/audio/albumart"),
+                    track.albumId
+                )
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        return context.contentResolver.loadThumbnail(albumUri, Size(512, 512), null)
+                    } else {
+                        context.contentResolver.openInputStream(albumUri)?.use { input ->
+                            return BitmapFactory.decodeStream(input)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // 2. Try MediaMetadataRetriever from direct URI
+            if (track.audioPath.startsWith("content://")) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(context, Uri.parse(track.audioPath))
+                    val artBytes = retriever.embeddedPicture
+                    if (artBytes != null && artBytes.isNotEmpty()) {
+                        return BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size)
+                    }
+                } catch (_: Exception) {} finally {
+                    try { retriever.release() } catch (_: Exception) {}
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load album art for notification", e)
+        }
+        return null
     }
 
     private fun initMediaSession(): MediaSession {
@@ -120,18 +164,26 @@ class PlaybackNotificationManager(private val context: Context) {
             return
         }
 
+        // Extract real artwork bitmap if present
+        val albumBitmap = loadTrackThumbnail(track)
+
         // Update MediaSession Metadata and Playback State for system seekbar slider & Android Auto display
         try {
             val session = mediaSession
-            val metadata = MediaMetadata.Builder()
+            val metadataBuilder = MediaMetadata.Builder()
                 .putString(MediaMetadata.METADATA_KEY_MEDIA_ID, track.id.toString())
                 .putString(MediaMetadata.METADATA_KEY_TITLE, track.title)
                 .putString(MediaMetadata.METADATA_KEY_ARTIST, track.artist)
                 .putString(MediaMetadata.METADATA_KEY_ALBUM, track.album)
                 .putString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST, track.artist)
                 .putLong(MediaMetadata.METADATA_KEY_DURATION, track.durationMs)
-                .build()
-            session.setMetadata(metadata)
+
+            if (albumBitmap != null) {
+                metadataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, albumBitmap)
+                metadataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, albumBitmap)
+            }
+
+            session.setMetadata(metadataBuilder.build())
 
             val state = if (isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
             val pbState = PlaybackState.Builder()
@@ -229,6 +281,10 @@ class PlaybackNotificationManager(private val context: Context) {
                     android.R.drawable.ic_media_next, "Next", pendingNext
                 ).build()
             )
+
+        if (albumBitmap != null) {
+            builder.setLargeIcon(albumBitmap)
+        }
 
         _mediaSession?.let { session ->
             builder.setStyle(

@@ -164,9 +164,7 @@ fun FullPlayerModal(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            var showArtworkInsteadOfSpectrum by remember { mutableStateOf(false) }
-
-            // Artwork Container / Animated Audio Visualizer with Toggle
+            // Artwork Container with Live Audio Visualizer Overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -176,42 +174,57 @@ fun FullPlayerModal(
                         Brush.verticalGradient(
                             listOf(CyberSurfaceDark, CyberDeepBackground)
                         )
-                    )
-                    .clickable { showArtworkInsteadOfSpectrum = !showArtworkInsteadOfSpectrum }
-                    .padding(16.dp),
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                if (showArtworkInsteadOfSpectrum) {
-                    TrackArtworkThumbnail(
-                        track = currentTrack,
-                        modifier = Modifier
-                            .size(200.dp),
-                        iconSize = 64.dp,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        VisualizerCanvas(
-                            isPlaying = isPlaying,
-                            bassBoostLevel = bassBoostLevel,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                        )
+                // Background actual song album artwork / gradient
+                TrackArtworkThumbnail(
+                    track = currentTrack,
+                    modifier = Modifier.fillMaxSize(),
+                    iconSize = 72.dp,
+                    shape = RoundedCornerShape(24.dp)
+                )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Real-time Spectrum (Tap to view Album Art)",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = CyberTextMuted,
-                                fontSize = 11.sp
+                // Dark atmospheric translucent glass overlay for crisp visualizer contrast
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.55f),
+                                    Color.Black.copy(alpha = 0.75f)
+                                )
                             )
                         )
-                    }
+                )
+
+                // Live Dynamic Audio Visualizer layered directly over the thumbnail
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    VisualizerCanvas(
+                        isPlaying = isPlaying,
+                        bassBoostLevel = bassBoostLevel,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(170.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "FLAC High-Res Spectrum",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
                 }
             }
 

@@ -68,14 +68,16 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val audioGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions[Manifest.permission.READ_MEDIA_AUDIO] == true
-        } else {
-            permissions[Manifest.permission.READ_EXTERNAL_STORAGE] == true
-        }
-        if (audioGranted) {
-            musicViewModel.scanDeviceAudioFiles()
-        }
+        try {
+            val audioGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissions[Manifest.permission.READ_MEDIA_AUDIO] == true
+            } else {
+                permissions[Manifest.permission.READ_EXTERNAL_STORAGE] == true
+            }
+            if (audioGranted) {
+                musicViewModel.scanDeviceAudioFiles()
+            }
+        } catch (_: Exception) {}
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,37 +86,40 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AuraTheme {
-                AuraMusicApp(viewModel = musicViewModel)
+                AuraMusicApp(
+                    viewModel = musicViewModel,
+                    onRequestPermissions = {
+                        requestStoragePermissions()
+                    }
+                )
             }
         }
 
         handleIncomingIntent(intent)
-
-        try {
-            requestInitialPermissions()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 
-    private fun requestInitialPermissions() {
-        val permissionsToRequest = mutableListOf<String>()
+    private fun requestStoragePermissions() {
+        try {
+            val permissionsToRequest = mutableListOf<String>()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
+                }
+            } else {
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
             }
-            if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
-            }
-        } else {
-            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-        }
 
-        if (permissionsToRequest.isNotEmpty()) {
-            permissionLauncher.launch(permissionsToRequest.toTypedArray())
+            if (permissionsToRequest.isNotEmpty()) {
+                permissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -126,17 +131,22 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
-        if (intent.action == Intent.ACTION_VIEW) {
-            val uri = intent.data
-            if (uri != null) {
-                musicViewModel.playFromUri(uri)
+        try {
+            if (intent.action == Intent.ACTION_VIEW) {
+                val uri = intent.data
+                if (uri != null) {
+                    musicViewModel.playFromUri(uri)
+                }
             }
-        }
+        } catch (_: Exception) {}
     }
 }
 
 @Composable
-fun AuraMusicApp(viewModel: MusicViewModel) {
+fun AuraMusicApp(
+    viewModel: MusicViewModel,
+    onRequestPermissions: () -> Unit = {}
+) {
     var selectedTab by remember { mutableStateOf(NavTab.LIBRARY) }
     var isFullPlayerVisible by remember { mutableStateOf(false) }
 
@@ -284,7 +294,10 @@ fun AuraMusicApp(viewModel: MusicViewModel) {
                     onTrackClick = { track -> viewModel.playSingleTrack(track) },
                     onToggleFavorite = { track -> viewModel.toggleFavorite(track) },
                     onAddToPlaylist = { playlistId, trackId -> viewModel.addTrackToPlaylist(playlistId, trackId) },
-                    onScanStorageClick = { viewModel.scanDeviceAudioFiles() },
+                    onScanStorageClick = {
+                        onRequestPermissions()
+                        viewModel.scanDeviceAudioFiles()
+                    },
                     onShuffleAllClick = {
                         if (tracks.isNotEmpty()) {
                             val shuffled = tracks.shuffled()
