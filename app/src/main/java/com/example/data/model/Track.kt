@@ -16,6 +16,7 @@ data class Track(
     val bitrate: String = "2830 kbps",
     val fileSizeBytes: Long = 32_500_000,
     val isFavorite: Boolean = false,
-    val artworkColorIndex: Int = 0, // Gradient theme index or artwork URL
+    val artworkColorIndex: Int = 0, // Gradient theme index fallback
+    val albumId: Long = -1L, // MediaStore Album ID for actual album cover thumbnail
     val dateAddedMs: Long = System.currentTimeMillis()
 )

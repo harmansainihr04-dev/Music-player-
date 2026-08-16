@@ -96,6 +96,72 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun playFromUri(uri: android.net.Uri) {
+        viewModelScope.launch {
+            try {
+                val context = getApplication<Application>()
+                var title = "External Audio"
+                var artist = "Unknown Artist"
+                var album = "Audio File"
+                var durationMs = 0L
+                var isFlac = false
+
+                // Try to resolve filename from ContentResolver
+                try {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1 && cursor.moveToFirst()) {
+                            val displayName = cursor.getString(nameIndex)
+                            if (!displayName.isNullOrBlank()) {
+                                title = displayName.substringBeforeLast(".")
+                                if (displayName.endsWith(".flac", ignoreCase = true)) {
+                                    isFlac = true
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(context, uri)
+                    val metaTitle = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+                    val metaArtist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                    val metaAlbum = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                    val metaDuration = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    val mime = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+
+                    if (!metaTitle.isNullOrBlank()) title = metaTitle
+                    if (!metaArtist.isNullOrBlank()) artist = metaArtist
+                    if (!metaAlbum.isNullOrBlank()) album = metaAlbum
+                    durationMs = metaDuration?.toLongOrNull() ?: 180000L
+                    if (mime?.contains("flac", ignoreCase = true) == true) {
+                        isFlac = true
+                    }
+                    retriever.release()
+                } catch (_: Exception) {}
+
+                val externalTrack = Track(
+                    id = System.currentTimeMillis(),
+                    title = title,
+                    artist = artist,
+                    album = album,
+                    durationMs = if (durationMs > 0) durationMs else 180000L,
+                    audioPath = uri.toString(),
+                    isFlac = isFlac,
+                    sampleRate = if (isFlac) "24-bit / 96.0 kHz" else "16-bit / 44.1 kHz",
+                    bitrate = if (isFlac) "2830 kbps" else "320 kbps",
+                    fileSizeBytes = 25_000_000,
+                    isFavorite = false,
+                    artworkColorIndex = (0..5).random()
+                )
+                playerEngine.setQueue(listOf(externalTrack), 0)
+            } catch (e: Exception) {
+                android.util.Log.e("MusicViewModel", "Error opening URI", e)
+            }
+        }
+    }
+
     fun togglePlayPause() = playerEngine.togglePlayPause()
     fun playNext() = playerEngine.playNext()
     fun playPrevious() = playerEngine.playPrevious()

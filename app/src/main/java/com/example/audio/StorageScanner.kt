@@ -16,6 +16,7 @@ class StorageScanner(private val context: Context) {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.MIME_TYPE,
@@ -39,6 +40,7 @@ class StorageScanner(private val context: Context) {
                 val titleColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val albumColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                val albumIdColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                 val durationColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val sizeColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
                 val mimeColumn = c.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
@@ -49,6 +51,7 @@ class StorageScanner(private val context: Context) {
                     val title = c.getString(titleColumn) ?: "Unknown Track"
                     val artist = c.getString(artistColumn) ?: "<Unknown Artist>"
                     val album = c.getString(albumColumn) ?: "<Unknown Album>"
+                    val albumId = c.getLong(albumIdColumn)
                     val durationMs = c.getLong(durationColumn)
                     val sizeBytes = c.getLong(sizeColumn)
                     val mimeType = c.getString(mimeColumn) ?: ""
@@ -72,7 +75,8 @@ class StorageScanner(private val context: Context) {
                             sampleRate = sampleRateStr,
                             bitrate = bitrateStr,
                             fileSizeBytes = sizeBytes,
-                            artworkColorIndex = (id % 5).toInt()
+                            artworkColorIndex = (id % 5).toInt(),
+                            albumId = albumId
                         )
                     )
                 }

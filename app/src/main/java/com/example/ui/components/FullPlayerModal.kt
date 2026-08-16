@@ -164,7 +164,9 @@ fun FullPlayerModal(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Artwork Container / Animated Audio Visualizer
+            var showArtworkInsteadOfSpectrum by remember { mutableStateOf(false) }
+
+            // Artwork Container / Animated Audio Visualizer with Toggle
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -175,30 +177,41 @@ fun FullPlayerModal(
                             listOf(CyberSurfaceDark, CyberDeepBackground)
                         )
                     )
+                    .clickable { showArtworkInsteadOfSpectrum = !showArtworkInsteadOfSpectrum }
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    VisualizerCanvas(
-                        isPlaying = isPlaying,
-                        bassBoostLevel = bassBoostLevel,
+                if (showArtworkInsteadOfSpectrum) {
+                    TrackArtworkThumbnail(
+                        track = currentTrack,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
+                            .size(200.dp),
+                        iconSize = 64.dp,
+                        shape = RoundedCornerShape(16.dp)
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Real-time FLAC Spectrum Visualizer",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = CyberTextMuted,
-                            fontSize = 11.sp
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        VisualizerCanvas(
+                            isPlaying = isPlaying,
+                            bassBoostLevel = bassBoostLevel,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
                         )
-                    )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Real-time Spectrum (Tap to view Album Art)",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = CyberTextMuted,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
                 }
             }
 

@@ -89,21 +89,13 @@ fun TrackItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Artwork Badge
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Brush.linearGradient(gradientColors)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MusicNote,
-                    contentDescription = "Track Artwork",
-                    tint = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.size(26.dp)
-                )
-            }
+            // Artwork Badge with Actual Thumbnail support
+            TrackArtworkThumbnail(
+                track = track,
+                modifier = Modifier.size(52.dp),
+                iconSize = 26.dp,
+                shape = RoundedCornerShape(10.dp)
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 

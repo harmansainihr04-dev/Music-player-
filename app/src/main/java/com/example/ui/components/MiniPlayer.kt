@@ -87,24 +87,12 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Album Art
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.sweepGradient(
-                                listOf(CyberNeonCyan, CyberElectricPurple, CyberNeonCyan)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = "Playing Track",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                TrackArtworkThumbnail(
+                    track = currentTrack,
+                    modifier = Modifier.size(44.dp),
+                    iconSize = 22.dp,
+                    shape = CircleShape
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
