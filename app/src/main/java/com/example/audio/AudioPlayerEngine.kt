@@ -103,8 +103,8 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     private val _isGaplessEnabled = MutableStateFlow(true)
     val isGaplessEnabled: StateFlow<Boolean> = _isGaplessEnabled.asStateFlow()
 
-    // Equalizer State
-    private val _eqEnabled = MutableStateFlow(true)
+    // Equalizer State (Default: OFF)
+    private val _eqEnabled = MutableStateFlow(false)
     val eqEnabled: StateFlow<Boolean> = _eqEnabled.asStateFlow()
 
     private val _bassBoostLevel = MutableStateFlow(0.75f) // 0.0 to 1.0 (75% default)
