@@ -96,6 +96,24 @@ class MainActivity : ComponentActivity() {
         }
 
         handleIncomingIntent(intent)
+
+        // Check if permissions already granted, scan immediately
+        checkAndTriggerInitialScan()
+    }
+
+    private fun checkAndTriggerInitialScan() {
+        val hasAudioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
+        } else {
+            checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (hasAudioPermission) {
+            musicViewModel.scanDeviceAudioFiles()
+        } else {
+            // Automatically request permissions on initial launch
+            requestStoragePermissions()
+        }
     }
 
     private fun requestStoragePermissions() {

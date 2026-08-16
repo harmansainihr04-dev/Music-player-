@@ -290,23 +290,49 @@ fun LibraryScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.FolderSpecial,
                         contentDescription = null,
-                        tint = CyberTextMuted,
+                        tint = CyberNeonCyan,
                         modifier = Modifier.size(64.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No tracks found in library",
-                        style = MaterialTheme.typography.titleMedium.copy(color = CyberTextPrimary)
+                        text = "No audio files found yet",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Tap refresh icon to scan device storage for FLAC files",
-                        style = MaterialTheme.typography.bodySmall.copy(color = CyberTextMuted)
+                        text = "Allow Storage & Notification permissions to automatically detect all songs on your device.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = CyberTextMuted,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = onScanStorageClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyberNeonCyan,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.testTag("grant_permission_scan_btn")
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isScanInProgress) "Scanning Device..." else "Allow Permissions & Scan",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         } else {
