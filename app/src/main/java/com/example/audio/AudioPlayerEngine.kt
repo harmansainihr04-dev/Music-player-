@@ -122,13 +122,23 @@ class AudioPlayerEngine private constructor(private val context: Context) {
 
     private var currentQueueIndex = -1
 
+    private val prefs = context.getSharedPreferences("harmanx_player_state", Context.MODE_PRIVATE)
+
     private val handler = Handler(Looper.getMainLooper())
+    private var lastSavedPosition = 0L
     private val progressUpdater = object : Runnable {
         override fun run() {
             primaryPlayer?.let { player ->
                 if (player.isPlaying) {
                     _currentPositionMs.value = player.currentPosition.toLong()
                     _durationMs.value = player.duration.toLong()
+                    
+                    // Periodically persist playback position every ~2 seconds
+                    val pos = _currentPositionMs.value
+                    if (Math.abs(pos - lastSavedPosition) >= 2000) {
+                        lastSavedPosition = pos
+                        savePlaybackState(pos)
+                    }
                 }
             } ?: run {
                 if (isSynthPlaying) {
@@ -145,6 +155,55 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     init {
         handler.post(progressUpdater)
         PlaybackControlReceiver.audioPlayerEngine = this
+        restoreLastPlaybackState()
+    }
+
+    private fun savePlaybackState(positionMs: Long) {
+        val track = _currentTrack.value ?: return
+        try {
+            prefs.edit()
+                .putLong("saved_track_id", track.id)
+                .putString("saved_track_path", track.audioPath)
+                .putLong("saved_position_ms", positionMs)
+                .putLong("saved_duration_ms", _durationMs.value)
+                .apply()
+        } catch (_: Exception) {}
+    }
+
+    fun restoreLastPlaybackState() {
+        engineScope.launch {
+            try {
+                val savedTrackId = prefs.getLong("saved_track_id", -1L)
+                val savedTrackPath = prefs.getString("saved_track_path", null)
+                val savedPos = prefs.getLong("saved_position_ms", 0L)
+                val savedDur = prefs.getLong("saved_duration_ms", 0L)
+
+                if (savedTrackId != -1L || !savedTrackPath.isNullOrEmpty()) {
+                    val db = AuraDatabase.getInstance(context)
+                    val track = if (savedTrackId != -1L) {
+                        db.trackDao().getTrackById(savedTrackId)
+                    } else null ?: if (!savedTrackPath.isNullOrEmpty()) {
+                        db.trackDao().getTrackByPath(savedTrackPath)
+                    } else null
+
+                    if (track != null) {
+                        _currentTrack.value = track
+                        _durationMs.value = if (savedDur > 0) savedDur else track.durationMs
+                        _currentPositionMs.value = savedPos.coerceAtMost(_durationMs.value)
+                        
+                        // Also restore queue so next/previous works
+                        val all = db.trackDao().getAllTracks().first()
+                        if (all.isNotEmpty()) {
+                            _playlistQueue.value = all
+                            val idx = all.indexOfFirst { it.id == track.id }
+                            if (idx != -1) currentQueueIndex = idx
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d("AudioPlayerEngine", "Error restoring playback state", e)
+            }
+        }
     }
 
     fun getMediaSession(): MediaSession = notificationManager.mediaSession
@@ -244,10 +303,10 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         }
     }
 
-    fun playTrack(track: Track) {
+    fun playTrack(track: Track, startPositionMs: Long = 0L) {
         _currentTrack.value = track
         _durationMs.value = track.durationMs
-        _currentPositionMs.value = 0L
+        _currentPositionMs.value = startPositionMs
 
         stopPlayback()
         requestAudioFocus()
@@ -265,6 +324,9 @@ class AudioPlayerEngine private constructor(private val context: Context) {
                     )
                     setDataSource(context, uri)
                     prepare()
+                    if (startPositionMs > 0 && startPositionMs < track.durationMs) {
+                        seekTo(startPositionMs.toInt())
+                    }
                     start()
                 }
                 primaryPlayer = player
@@ -403,9 +465,14 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     }
 
     fun playOrResume() {
-        if (_currentTrack.value != null) {
+        val current = _currentTrack.value
+        if (current != null) {
             if (!_isPlaying.value) {
-                togglePlayPause()
+                if (primaryPlayer != null) {
+                    togglePlayPause()
+                } else {
+                    playTrack(current, _currentPositionMs.value)
+                }
             }
         } else {
             engineScope.launch {
@@ -459,13 +526,15 @@ class AudioPlayerEngine private constructor(private val context: Context) {
             isSynthPlaying = false
         }
         _isPlaying.value = false
+        savePlaybackState(_currentPositionMs.value)
         notifyPlaybackState()
         abandonAudioFocus()
         unregisterBecomingNoisyReceiver()
     }
 
     fun togglePlayPause() {
-        if (_currentTrack.value == null) {
+        val current = _currentTrack.value
+        if (current == null) {
             playOrResume()
             return
         }
@@ -486,7 +555,8 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         if (isSynthPlaying) {
             pausePlayback()
         } else {
-            _currentTrack.value?.let { playSynthFlacAudio(it) }
+            // If restored on app start, start from the saved timestamp
+            playTrack(current, _currentPositionMs.value)
         }
     }
 
@@ -538,6 +608,7 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     fun seekTo(positionMs: Long) {
         _currentPositionMs.value = positionMs
         primaryPlayer?.seekTo(positionMs.toInt())
+        savePlaybackState(positionMs)
         notifyPlaybackState()
     }
 
